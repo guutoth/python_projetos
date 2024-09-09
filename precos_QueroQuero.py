@@ -1,5 +1,5 @@
-### ATUALIZAÇÃO 09/09/2024 - 10:30 ####
-### Versão 1.0 ###
+### ATUALIZAÇÃO 09/09/2024 - 10:33 ####
+### Versão 1.1 ###
 
 import requests
 from bs4 import BeautifulSoup
@@ -50,7 +50,7 @@ def ler_links_arquivo(arquivo):
 def adicionar_link():
     novo_link = caixa_link.get().strip()  # Remove espaços em branco extras
     if novo_link:
-        arquivo_links = 'produtos.txt'
+        arquivo_links = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
         caminho_arquivo = os.path.join(
             os.path.dirname(__file__), arquivo_links)
 
@@ -78,7 +78,7 @@ def abrir_link(event):
 
 
 def atualizar_lista():
-    arquivo_links = 'produtos.txt'
+    arquivo_links = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
     urls_produtos = ler_links_arquivo(arquivo_links)
 
     for item in tree.get_children():
