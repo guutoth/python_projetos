@@ -1,0 +1,31 @@
+import requests
+import os
+import subprocess
+
+# URL para o arquivo Python atualizado
+URL_ATUALIZACAO = "https://github.com/guutoth/python_projetos.git"
+
+# Caminho local para salvar o arquivo atualizado
+CAMINHO_LOCAL = "precos_atualizado.py"
+
+# Função para baixar o script atualizado
+def baixar_atualizacao():
+    try:
+        response = requests.get(URL_ATUALIZACAO)
+        response.raise_for_status()
+        with open(CAMINHO_LOCAL, 'wb') as f:
+            f.write(response.content)
+        print("Atualização baixada com sucesso.")
+    except Exception as e:
+        print(f"Erro ao baixar atualização: {e}")
+
+# Função para executar o script baixado
+def executar_atualizacao():
+    try:
+        subprocess.run(["python", CAMINHO_LOCAL], check=True)
+    except Exception as e:
+        print(f"Erro ao executar a atualização: {e}")
+
+if __name__ == "__main__":
+    baixar_atualizacao()
+    executar_atualizacao()
