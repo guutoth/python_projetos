@@ -1,5 +1,4 @@
-### ATUALIZAÇÃO 09/09/2024 - 11>30 ####
-### Versão 1.0 ###
+###### ATUALIZAÇÃO 1.1v - 09/09/2024 - 13:30 ######
 
 import requests
 from bs4 import BeautifulSoup
@@ -106,6 +105,35 @@ def exportar_para_excel():
     messagebox.showinfo("Exportação concluída",
                         "Dados exportados para produtos_precos.xlsx")
 
+# Função para excluir item selecionado
+
+
+def excluir_item():
+    selecionado = tree.selection()
+    if not selecionado:
+        messagebox.showwarning("Nenhum item selecionado",
+                               "Selecione um item para excluir.")
+        return
+
+    for item in selecionado:
+        link = tree.item(item, "values")[2]
+        excluir_do_arquivo(link)
+        tree.delete(item)
+    atualizar_lista()
+
+# Função para excluir link do arquivo produtos.txt
+
+
+def excluir_do_arquivo(link):
+    caminho_arquivo = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
+    with open(caminho_arquivo, 'r') as f:
+        linhas = f.readlines()
+
+    with open(caminho_arquivo, 'w') as f:
+        for linha in linhas:
+            if linha.strip() != link:
+                f.write(linha)
+
 
 # Criação da interface gráfica
 janela = tk.Tk()
@@ -154,7 +182,7 @@ botao_adicionar = tk.Button(
     frame_adicionar, text="Adicionar", command=adicionar_link, font=("Helvetica", 12))
 botao_adicionar.pack(side=tk.LEFT)
 
-# Botões de Atualizar e Exportar
+# Botões de Atualizar, Exportar e Excluir
 botao_atualizar = tk.Button(
     janela, text="Atualizar Preços", command=atualizar_lista, font=("Helvetica", 12))
 botao_atualizar.pack(pady=5)
@@ -162,6 +190,10 @@ botao_atualizar.pack(pady=5)
 botao_exportar = tk.Button(janela, text="Exportar para Excel",
                            command=exportar_para_excel, font=("Helvetica", 12))
 botao_exportar.pack(pady=5)
+
+botao_excluir = tk.Button(janela, text="Excluir Selecionado",
+                          command=excluir_item, font=("Helvetica", 12))
+botao_excluir.pack(pady=5)
 
 centralizar_colunas()
 
