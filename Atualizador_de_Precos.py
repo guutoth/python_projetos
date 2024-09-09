@@ -1,4 +1,4 @@
-### ATUALIZAÇÃO 09/09/2024 - 11>15 ####
+### ATUALIZAÇÃO 09/09/2024 - 11>30 ####
 ### Versão 1.0 ###
 
 import requests
