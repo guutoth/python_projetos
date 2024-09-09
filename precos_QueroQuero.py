@@ -1,3 +1,5 @@
+### ATUALIZAÇÃO 09/09/2024 - 09:45 ####
+
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
