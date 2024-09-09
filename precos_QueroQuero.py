@@ -1,4 +1,5 @@
-### ATUALIZAÇÃO 09/09/2024 - 10:00 ####
+### ATUALIZAÇÃO 09/09/2024 - 10:03 ####
+### Versão 1.0 ###
 
 import requests
 from bs4 import BeautifulSoup
