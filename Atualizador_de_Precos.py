@@ -1,4 +1,4 @@
-###### ATUALIZAÇÃO 1.1v - 09/09/2024 - 13:30 ######
+###### ATUALIZAÇÃO 1.1v - 09/09/2024 - 14:30 ######
 
 import requests
 from bs4 import BeautifulSoup
