@@ -1,3 +1,7 @@
+### VERSÃO 2.0 ###
+# --- 10/09/2024 --- #
+
+
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
