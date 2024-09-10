@@ -1,6 +1,5 @@
 ### VERSÃO 1.0 ###
 # TENTANDO ADICIONAR A BUSCA EM OUTROS SITES ###
-
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
@@ -69,6 +68,12 @@ def adicionar_link():
     if novo_link:
         caminho_arquivo = criar_arquivo_links()
 
+        # Verifica se o link já está no arquivo
+        if link_existe(novo_link):
+            messagebox.showwarning(
+                "Link Duplicado", "O link já está cadastrado.")
+            return
+
         # Adiciona quebra de linha se não houver
         with open(caminho_arquivo, 'a') as f:
             if not novo_link.endswith('\n'):
@@ -80,6 +85,21 @@ def adicionar_link():
     else:
         messagebox.showwarning(
             "Entrada inválida", "Por favor, insira um link válido.")
+
+
+def link_existe(link):
+    caminho_arquivo = criar_arquivo_links()
+    if not os.path.isfile(caminho_arquivo):
+        return False
+
+    with open(caminho_arquivo, 'r') as f:
+        linhas = f.readlines()
+
+    for linha in linhas:
+        if linha.strip() == link:
+            return True
+
+    return False
 
 
 def abrir_link(event):
