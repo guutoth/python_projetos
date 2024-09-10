@@ -6,6 +6,8 @@ import os
 import webbrowser
 import pandas as pd
 import concurrent.futures
+import shutil
+from datetime import datetime
 
 # Função para obter nome e preço do produto
 
@@ -42,6 +44,29 @@ def ler_links_arquivo(arquivo):
         urls = f.read().splitlines()
     return urls
 
+# Função para criar um backup do arquivo de links
+
+
+def fazer_backup():
+    caminho_arquivo = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
+    backup_dir = 'C:\\Atualizador de Preços (Quero-Quero)\\backup\\'
+    if not os.path.exists(backup_dir):
+        try:
+            os.makedirs(backup_dir)
+            print(f"Pasta de backup criada em: {backup_dir}")
+        except Exception as e:
+            print(f"Erro ao criar a pasta de backup: {e}")
+            return
+
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    backup_arquivo = os.path.join(
+        backup_dir, f'produtos_backup_{timestamp}.txt')
+    try:
+        shutil.copy(caminho_arquivo, backup_arquivo)
+        print(f"Backup criado em: {backup_arquivo}")
+    except Exception as e:
+        print(f"Erro ao criar o backup: {e}")
+
 # Função para adicionar link ao arquivo
 
 
@@ -49,6 +74,14 @@ def adicionar_link():
     novo_link = caixa_link.get().strip()  # Remove espaços em branco extras
     if novo_link:
         arquivo_links = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
+        urls_existentes = ler_links_arquivo(arquivo_links)
+
+        if novo_link in urls_existentes:
+            messagebox.showwarning(
+                "Produto duplicado", "O produto já está na lista.")
+            return
+
+        fazer_backup()
         caminho_arquivo = os.path.join(
             os.path.dirname(__file__), arquivo_links)
 
@@ -63,6 +96,20 @@ def adicionar_link():
     else:
         messagebox.showwarning(
             "Entrada inválida", "Por favor, insira um link válido.")
+
+# Função para excluir link do arquivo produtos.txt
+
+
+def excluir_do_arquivo(link):
+    fazer_backup()
+    caminho_arquivo = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
+    with open(caminho_arquivo, 'r') as f:
+        linhas = f.readlines()
+
+    with open(caminho_arquivo, 'w') as f:
+        for linha in linhas:
+            if linha.strip() != link:
+                f.write(linha)
 
 # Função para abrir o link no navegador
 
@@ -88,13 +135,17 @@ def atualizar_lista(ordenar_por=None):
         return
 
     produtos = []
+    urls_já_exibidas = set()
 
     # Usa threads para obter os dados dos produtos em paralelo
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futuros = [executor.submit(obter_nome_e_preco, url)
                    for url in urls_produtos]
         for futuro in concurrent.futures.as_completed(futuros):
-            produtos.append(futuro.result())
+            nome, preco, url = futuro.result()
+            if url not in urls_já_exibidas:
+                produtos.append((nome, preco, url))
+                urls_já_exibidas.add(url)
 
     if ordenar_por == 'nome':
         produtos.sort(key=lambda x: x[0])
@@ -160,19 +211,6 @@ def excluir_item():
         tree.delete(item)
     atualizar_lista()
 
-# Função para excluir link do arquivo produtos.txt
-
-
-def excluir_do_arquivo(link):
-    caminho_arquivo = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
-    with open(caminho_arquivo, 'r') as f:
-        linhas = f.readlines()
-
-    with open(caminho_arquivo, 'w') as f:
-        for linha in linhas:
-            if linha.strip() != link:
-                f.write(linha)
-
 
 # Criação da interface gráfica
 janela = tk.Tk()
@@ -211,7 +249,7 @@ tree.bind("<Double-1>", abrir_link)
 frame_adicionar = tk.Frame(janela)
 frame_adicionar.pack(pady=10)
 
-tk.Label(frame_adicionar, text="Adicionar Link:",
+tk.Label(frame_adicionar, text="Adicionar Produto:",
          font=("Helvetica", 12)).pack(side=tk.LEFT)
 
 caixa_link = tk.Entry(frame_adicionar, width=50, font=("Helvetica", 12))
