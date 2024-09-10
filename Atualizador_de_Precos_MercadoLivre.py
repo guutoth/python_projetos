@@ -1,3 +1,6 @@
+### VERSÃO 1.0 ###
+# TENTANDO ADICIONAR A BUSCA EM OUTROS SITES ###
+
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
@@ -7,11 +10,26 @@ import webbrowser
 import pandas as pd
 import concurrent.futures
 
-# Função para obter nome e preço do produto
+# Mapeamento de seletores por site
+SELETORES = {
+    'amazon.com.br': {
+        'nome': '.a-size-large product-title-word-break',
+        'preco': '.a-price aok-align-center'
+    },
+
+    'mercadolivre.com.br': {
+        'nome': '.ui-pdp-title',
+        'preco': '.ui-pdp-price__second-line'
+    },
+    # Adicione mais sites e seletores conforme necessário
+}
 
 
 def obter_nome_e_preco(url):
     headers = {'User-Agent': 'Mozilla/5.0'}
+    site = identificar_site(url)
+    seletores = SELETORES.get(site, {})
+
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -19,10 +37,8 @@ def obter_nome_e_preco(url):
         return 'Nome não encontrado', 'Preço não encontrado', url
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    nome_element = soup.select_one(
-        '.ui-pdp-title')
-    preco_element = soup.select_one(
-        '.ui-pdp-price__second-line')
+    nome_element = soup.select_one(seletores.get('nome', ''))
+    preco_element = soup.select_one(seletores.get('preco', ''))
 
     nome = nome_element.get_text(
         strip=True) if nome_element else 'Nome não encontrado'
@@ -31,7 +47,12 @@ def obter_nome_e_preco(url):
 
     return nome, preco, url
 
-# Função para ler links do arquivo
+
+def identificar_site(url):
+    for site in SELETORES.keys():
+        if site in url:
+            return site
+    return 'desconhecido'
 
 
 def ler_links_arquivo(arquivo):
@@ -41,8 +62,6 @@ def ler_links_arquivo(arquivo):
     with open(caminho_arquivo, 'r') as f:
         urls = f.read().splitlines()
     return urls
-
-# Função para adicionar link ao arquivo
 
 
 def adicionar_link():
@@ -62,15 +81,11 @@ def adicionar_link():
         messagebox.showwarning(
             "Entrada inválida", "Por favor, insira um link válido.")
 
-# Função para abrir o link no navegador
-
 
 def abrir_link(event):
     item = tree.selection()[0]
     link = tree.item(item, "values")[2]
     webbrowser.open(link)
-
-# Função para atualizar a lista de produtos usando threads
 
 
 def atualizar_lista(ordenar_por=None):
@@ -102,8 +117,6 @@ def atualizar_lista(ordenar_por=None):
 
     for nome, preco, link in produtos:
         tree.insert('', 'end', values=(nome, preco, link))
-
-# Função para exportar para Excel
 
 
 def exportar_para_excel():
@@ -142,8 +155,6 @@ def exportar_para_excel():
         messagebox.showerror("Erro na exportação",
                              f"Ocorreu um erro ao exportar: {e}")
 
-# Função para excluir item selecionado
-
 
 def excluir_item():
     selecionado = tree.selection()
@@ -158,8 +169,6 @@ def excluir_item():
         tree.delete(item)
     atualizar_lista()
 
-# Função para excluir link do arquivo produtos.txt
-
 
 def excluir_do_arquivo(link):
     caminho_arquivo = criar_arquivo_links()
@@ -170,8 +179,6 @@ def excluir_do_arquivo(link):
         for linha in linhas:
             if linha.strip() != link:
                 f.write(linha)
-
-# Função para garantir que o diretório e o arquivo TXT existam
 
 
 def criar_arquivo_links():
