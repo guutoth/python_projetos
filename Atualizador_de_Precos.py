@@ -220,7 +220,7 @@ def configurar_interface():
 
     style = ttk.Style()
     style.configure("Treeview.Heading", font=("Helvetica", 14))
-    style.configure("Treeview", rowheight=30, font=("Helvetica", 12))
+    style.configure("Treeview", rowheight=30, font=("Helvetica", 10))
 
     tree = ttk.Treeview(root, columns=COLUNAS,
                         show='headings', style="Treeview")
