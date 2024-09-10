@@ -1,9 +1,11 @@
-###### ATUALIZAÇÃO 1.1v - 09/09/2024 - 18:00 ######
+#### Atualização 1.1 ####
+# ----- 10/09/2024 ----- #
+
 
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import os
 import webbrowser
 import pandas as pd
@@ -27,8 +29,9 @@ def obter_nome_e_preco(url):
 
     nome = nome_element.get_text(
         strip=True) if nome_element else 'Nome não encontrado'
+
     preco = preco_element.get_text(
-        strip=True) if preco_element else 'Preço não encontrado'
+        strip=True).replace("R$", "").strip() if preco_element else 'Preço não encontrado'
 
     return nome, preco, url
 
@@ -96,14 +99,40 @@ def atualizar_lista():
 
 
 def exportar_para_excel():
-    dados = []
-    for item in tree.get_children():
-        dados.append(tree.item(item, "values"))
+    try:
+        dados = []
+        for item in tree.get_children():
+            dados.append(tree.item(item, "values"))
 
-    df = pd.DataFrame(dados, columns=["Produto", "Preço", "Link"])
-    df.to_excel("produtos_precos.xlsx", index=False)
-    messagebox.showinfo("Exportação concluída",
-                        "Dados exportados para produtos_precos.xlsx")
+        # Verifica se há dados para exportar
+        if not dados:
+            messagebox.showwarning("Exportação falhou",
+                                   "Não há dados para exportar.")
+            return
+
+        # Cria um DataFrame a partir dos dados
+        df = pd.DataFrame(dados, columns=["Produto", "Preço", "Link"])
+
+        # Abre uma caixa de diálogo para o usuário escolher onde salvar o arquivo
+        caminho_excel = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+            title="Salvar como"
+        )
+
+        # Verifica se o usuário cancelou a operação
+        if not caminho_excel:
+            return
+
+        # Salva o DataFrame como um arquivo Excel
+        df.to_excel(caminho_excel, index=False)
+
+        # Mostra uma mensagem de sucesso
+        messagebox.showinfo("Exportação concluída",
+                            f"Dados exportados para {caminho_excel}")
+    except Exception as e:
+        messagebox.showerror("Erro na exportação",
+                             f"Ocorreu um erro ao exportar: {e}")
 
 # Função para excluir item selecionado
 
@@ -137,7 +166,7 @@ def excluir_do_arquivo(link):
 
 # Criação da interface gráfica
 janela = tk.Tk()
-janela.title("Lista de Produtos e Preços")
+janela.title("Lista de Produtos e Preços - Versão 1.1")
 
 style = ttk.Style()
 style.configure("Treeview.Heading", font=("Helvetica", 14))
