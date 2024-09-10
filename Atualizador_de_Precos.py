@@ -1,5 +1,6 @@
 ### VERSÃO 2.2 ###
 # OTIMIZAÇÃO E REFATORAÇÃO #
+# ADIÇÃO DA BARRA DE CARREGAMENTO #
 # 10/09/2024 #
 
 
@@ -13,6 +14,7 @@ import pandas as pd
 import concurrent.futures
 import shutil
 from datetime import datetime
+import time
 
 # Constantes de configuração
 CAMINHO_ARQUIVO = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
@@ -23,9 +25,10 @@ COLUNAS = ('Produto', 'Preço', 'Link')
 def obter_nome_e_preco(url):
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=20)
         response.raise_for_status()
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print(f"Erro ao acessar {url}: {e}")
         return 'Nome não encontrado', 'Preço não encontrado', url
 
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -119,33 +122,50 @@ def abrir_link(event):
 
 
 def atualizar_lista(ordenar_por=None):
+    global progress_bar, status_label
     urls_produtos = ler_links_arquivo(CAMINHO_ARQUIVO)
     tree.delete(*tree.get_children())
+    progress_bar['value'] = 0
+    progress_bar['maximum'] = len(urls_produtos)
+    status_label.config(text="Atualizando...")
 
     if not urls_produtos:
         tree.insert('', 'end', values=(
             "Nenhum link de produto encontrado", "", ""))
+        progress_bar['value'] = 0
+        status_label.config(text="Atualização concluída.")
+        root.after(5000, limpar_status)
         return
 
-    produtos = obter_dados_produtos(urls_produtos)
+    produtos = []
+
+    def processar_urls(urls):
+        nonlocal produtos
+        urls_já_exibidas = set()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futuros = [executor.submit(obter_nome_e_preco, url)
+                       for url in urls]
+            for futuro in concurrent.futures.as_completed(futuros):
+                nome, preco, url = futuro.result()
+                if url not in urls_já_exibidas:
+                    produtos.append((nome, preco, url))
+                    urls_já_exibidas.add(url)
+                progress_bar['value'] += 1
+                root.update_idletasks()
+
+    processar_urls(urls_produtos)
     produtos = ordenar_produtos(produtos, ordenar_por)
 
     for nome, preco, link in produtos:
         tree.insert('', 'end', values=(nome, preco, link))
 
+    progress_bar['value'] = 0
+    status_label.config(text="Atualização concluída.")
+    root.after(5000, limpar_status)
 
-def obter_dados_produtos(urls_produtos):
-    produtos = []
-    urls_já_exibidas = set()
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futuros = [executor.submit(obter_nome_e_preco, url)
-                   for url in urls_produtos]
-        for futuro in concurrent.futures.as_completed(futuros):
-            nome, preco, url = futuro.result()
-            if url not in urls_já_exibidas:
-                produtos.append((nome, preco, url))
-                urls_já_exibidas.add(url)
-    return produtos
+
+def limpar_status():
+    status_label.config(text="Pronto")
 
 
 def ordenar_produtos(produtos, ordenar_por):
@@ -194,15 +214,15 @@ def excluir_item():
 
 
 def configurar_interface():
-    janela = tk.Tk()
-    janela.title("Lista de Produtos e Preços - Versão 2.2")
+    global root, tree, caixa_link, progress_bar, status_label
+    root = tk.Tk()
+    root.title("Lista de Produtos e Preços - Versão 2.2")
 
     style = ttk.Style()
     style.configure("Treeview.Heading", font=("Helvetica", 14))
     style.configure("Treeview", rowheight=30, font=("Helvetica", 12))
 
-    global tree
-    tree = ttk.Treeview(janela, columns=COLUNAS,
+    tree = ttk.Treeview(root, columns=COLUNAS,
                         show='headings', style="Treeview")
     for coluna in COLUNAS:
         tree.heading(coluna, text=coluna)
@@ -212,19 +232,18 @@ def configurar_interface():
     tree.pack(fill=tk.BOTH, expand=True)
     tree.bind("<Double-1>", abrir_link)
 
-    frame_adicionar = tk.Frame(janela)
+    frame_adicionar = tk.Frame(root)
     frame_adicionar.pack(pady=10)
 
     tk.Label(frame_adicionar, text="Adicionar Produto:",
              font=("Helvetica", 12)).pack(side=tk.LEFT)
-    global caixa_link
     caixa_link = tk.Entry(frame_adicionar, width=50, font=("Helvetica", 12))
     caixa_link.pack(side=tk.LEFT, padx=5)
 
     tk.Button(frame_adicionar, text="Adicionar", command=adicionar_link,
               font=("Helvetica", 12)).pack(side=tk.LEFT)
 
-    frame_botoes = tk.Frame(janela)
+    frame_botoes = tk.Frame(root)
     frame_botoes.pack(pady=5)
 
     tk.Button(frame_botoes, text="Atualizar Preços", command=lambda: atualizar_lista(
@@ -234,7 +253,7 @@ def configurar_interface():
     tk.Button(frame_botoes, text="Excluir Selecionado", command=excluir_item, font=(
         "Helvetica", 12)).pack(side=tk.LEFT, padx=5)
 
-    frame_ordenacao = tk.Frame(janela)
+    frame_ordenacao = tk.Frame(root)
     frame_ordenacao.pack(pady=10)
 
     tk.Button(frame_ordenacao, text="Ordenar por Nome", command=lambda: atualizar_lista(
@@ -242,8 +261,19 @@ def configurar_interface():
     tk.Button(frame_ordenacao, text="Ordenar por Preço", command=lambda: atualizar_lista(
         'preco'), font=("Helvetica", 12)).pack(side=tk.LEFT, padx=5)
 
-    janela.geometry("800x600")
-    janela.mainloop()
+    frame_progresso = tk.Frame(root)
+    frame_progresso.pack(pady=10, fill=tk.X)
+
+    progress_bar = ttk.Progressbar(
+        frame_progresso, orient="horizontal", length=400, mode="determinate")
+    progress_bar.pack(pady=5, fill=tk.X)
+
+    status_label = tk.Label(
+        frame_progresso, text="Pronto", font=("Helvetica", 12))
+    status_label.pack()
+
+    root.geometry("800x600")
+    root.mainloop()
 
 
 if __name__ == "__main__":
