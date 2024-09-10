@@ -1,6 +1,5 @@
-### VERSÃO 2.0 ###
+### VERSAO 2.0 ###
 # --- 10/09/2024 --- #
-
 
 import requests
 from bs4 import BeautifulSoup
@@ -9,7 +8,6 @@ from tkinter import ttk, messagebox, filedialog
 import os
 import webbrowser
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Função para obter nome e preço do produto
 
@@ -50,19 +48,20 @@ def ler_links_arquivo(arquivo):
 
 
 def adicionar_link():
-    novo_link = caixa_link.get().strip()
+    novo_link = caixa_link.get().strip()  # Remove espaços em branco extras
     if novo_link:
         arquivo_links = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
         caminho_arquivo = os.path.join(
             os.path.dirname(__file__), arquivo_links)
 
+        # Adiciona quebra de linha se não houver
         with open(caminho_arquivo, 'a') as f:
             if not novo_link.endswith('\n'):
                 novo_link += '\n'
             f.write(novo_link)
 
-        caixa_link.delete(0, tk.END)
-        atualizar_lista()
+        caixa_link.delete(0, tk.END)  # Limpa a caixa de texto após adicionar
+        atualizar_lista()  # Atualiza a lista com o novo link
     else:
         messagebox.showwarning(
             "Entrada inválida", "Por favor, insira um link válido.")
@@ -78,7 +77,7 @@ def abrir_link(event):
 # Função para atualizar a lista de produtos
 
 
-def atualizar_lista():
+def atualizar_lista(ordenar_por=None):
     arquivo_links = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
     urls_produtos = ler_links_arquivo(arquivo_links)
 
@@ -90,16 +89,16 @@ def atualizar_lista():
             "Nenhum link de produto encontrado", "", ""))
         return
 
-    # Usando ThreadPoolExecutor para realizar requisições em paralelo
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        future_to_url = {executor.submit(
-            obter_nome_e_preco, url): url for url in urls_produtos}
-        for future in as_completed(future_to_url):
-            try:
-                nome, preco, link = future.result()
-                tree.insert('', 'end', values=(nome, preco, link))
-            except Exception as e:
-                print(f"Erro ao obter dados para {future_to_url[future]}: {e}")
+    produtos = [obter_nome_e_preco(url) for url in urls_produtos]
+
+    if ordenar_por == 'nome':
+        produtos.sort(key=lambda x: x[0])
+    elif ordenar_por == 'preco':
+        produtos.sort(key=lambda x: float(x[1].replace(',', '.').replace('R$', '').strip()) if x[1].replace(
+            ',', '.').replace('R$', '').strip().replace('.', '', 1).isdigit() else float('inf'))
+
+    for nome, preco, link in produtos:
+        tree.insert('', 'end', values=(nome, preco, link))
 
 # Função para exportar para Excel
 
@@ -110,23 +109,30 @@ def exportar_para_excel():
         for item in tree.get_children():
             dados.append(tree.item(item, "values"))
 
+        # Verifica se há dados para exportar
         if not dados:
             messagebox.showwarning("Exportação falhou",
                                    "Não há dados para exportar.")
             return
 
+        # Cria um DataFrame a partir dos dados
         df = pd.DataFrame(dados, columns=["Produto", "Preço", "Link"])
 
+        # Abre uma caixa de diálogo para o usuário escolher onde salvar o arquivo
         caminho_excel = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
             title="Salvar como"
         )
 
+        # Verifica se o usuário cancelou a operação
         if not caminho_excel:
             return
 
+        # Salva o DataFrame como um arquivo Excel
         df.to_excel(caminho_excel, index=False)
+
+        # Mostra uma mensagem de sucesso
         messagebox.showinfo("Exportação concluída",
                             f"Dados exportados para {caminho_excel}")
     except Exception as e:
@@ -165,11 +171,13 @@ def excluir_do_arquivo(link):
 
 # Criação da interface gráfica
 janela = tk.Tk()
-janela.title("Lista de Produtos e Preços - Versão 1.1")
+janela.title("Lista de Produtos e Preços - Versão 2.0")
 
 style = ttk.Style()
 style.configure("Treeview.Heading", font=("Helvetica", 14))
 style.configure("Treeview", rowheight=30, font=("Helvetica", 12))
+
+# Função para centralizar colunas
 
 
 def centralizar_colunas():
@@ -178,6 +186,7 @@ def centralizar_colunas():
     tree.column('Link', anchor='center')
 
 
+# Definição das colunas e criação da Treeview
 colunas = ('Produto', 'Preço', 'Link')
 tree = ttk.Treeview(janela, columns=colunas, show='headings', style="Treeview")
 
@@ -193,6 +202,7 @@ tree.pack(fill=tk.BOTH, expand=True)
 
 tree.bind("<Double-1>", abrir_link)
 
+# Adicionar Link
 frame_adicionar = tk.Frame(janela)
 frame_adicionar.pack(pady=10)
 
@@ -206,19 +216,36 @@ botao_adicionar = tk.Button(
     frame_adicionar, text="Adicionar", command=adicionar_link, font=("Helvetica", 12))
 botao_adicionar.pack(side=tk.LEFT)
 
-botao_atualizar = tk.Button(
-    janela, text="Atualizar Preços", command=atualizar_lista, font=("Helvetica", 12))
-botao_atualizar.pack(pady=5)
+# Botões de Atualizar, Exportar e Excluir
+frame_botoes = tk.Frame(janela)
+frame_botoes.pack(pady=5)
 
-botao_exportar = tk.Button(janela, text="Exportar para Excel",
+botao_atualizar = tk.Button(frame_botoes, text="Atualizar Preços",
+                            command=lambda: atualizar_lista(), font=("Helvetica", 12))
+botao_atualizar.pack(side=tk.LEFT, padx=5)
+
+botao_exportar = tk.Button(frame_botoes, text="Exportar para Excel",
                            command=exportar_para_excel, font=("Helvetica", 12))
-botao_exportar.pack(pady=5)
+botao_exportar.pack(side=tk.LEFT, padx=5)
 
-botao_excluir = tk.Button(janela, text="Excluir Selecionado",
+botao_excluir = tk.Button(frame_botoes, text="Excluir Selecionado",
                           command=excluir_item, font=("Helvetica", 12))
-botao_excluir.pack(pady=5)
+botao_excluir.pack(side=tk.LEFT, padx=5)
+
+# Botões de Ordenação
+frame_ordenacao = tk.Frame(janela)
+frame_ordenacao.pack(pady=10)
+
+botao_ordenar_nome = tk.Button(frame_ordenacao, text="Ordenar por Nome",
+                               command=lambda: atualizar_lista('nome'), font=("Helvetica", 12))
+botao_ordenar_nome.pack(side=tk.LEFT, padx=5)
+
+botao_ordenar_preco = tk.Button(frame_ordenacao, text="Ordenar por Preço",
+                                command=lambda: atualizar_lista('preco'), font=("Helvetica", 12))
+botao_ordenar_preco.pack(side=tk.LEFT, padx=5)
 
 centralizar_colunas()
 
+# Ajusta a resolução para 800x600
 janela.geometry("800x600")
 janela.mainloop()
