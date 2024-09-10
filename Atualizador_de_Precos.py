@@ -1,6 +1,3 @@
-### VERSAO 2.0 ###
-# --- 10/09/2024 --- #
-
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
@@ -8,6 +5,7 @@ from tkinter import ttk, messagebox, filedialog
 import os
 import webbrowser
 import pandas as pd
+import concurrent.futures
 
 # Função para obter nome e preço do produto
 
@@ -15,7 +13,7 @@ import pandas as pd
 def obter_nome_e_preco(url):
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
     except requests.RequestException as e:
         return 'Nome não encontrado', 'Preço não encontrado', url
@@ -74,7 +72,7 @@ def abrir_link(event):
     link = tree.item(item, "values")[2]
     webbrowser.open(link)
 
-# Função para atualizar a lista de produtos
+# Função para atualizar a lista de produtos usando threads
 
 
 def atualizar_lista(ordenar_por=None):
@@ -89,7 +87,14 @@ def atualizar_lista(ordenar_por=None):
             "Nenhum link de produto encontrado", "", ""))
         return
 
-    produtos = [obter_nome_e_preco(url) for url in urls_produtos]
+    produtos = []
+
+    # Usa threads para obter os dados dos produtos em paralelo
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futuros = [executor.submit(obter_nome_e_preco, url)
+                   for url in urls_produtos]
+        for futuro in concurrent.futures.as_completed(futuros):
+            produtos.append(futuro.result())
 
     if ordenar_por == 'nome':
         produtos.sort(key=lambda x: x[0])
