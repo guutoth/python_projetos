@@ -1,3 +1,8 @@
+### VERSÃO 2.2 ###
+# OTIMIZAÇÃO E REFATORAÇÃO #
+# 10/09/2024 #
+
+
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
@@ -9,7 +14,10 @@ import concurrent.futures
 import shutil
 from datetime import datetime
 
-# Função para obter nome e preço do produto
+# Constantes de configuração
+CAMINHO_ARQUIVO = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
+DIRETORIO_BACKUP = 'C:\\Atualizador de Preços (Quero-Quero)\\backup\\'
+COLUNAS = ('Produto', 'Preço', 'Link')
 
 
 def obter_nome_e_preco(url):
@@ -17,7 +25,7 @@ def obter_nome_e_preco(url):
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
-    except requests.RequestException as e:
+    except requests.RequestException:
         return 'Nome não encontrado', 'Preço não encontrado', url
 
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -33,85 +41,75 @@ def obter_nome_e_preco(url):
 
     return nome, preco, url
 
-# Função para ler links do arquivo
-
 
 def ler_links_arquivo(arquivo):
     caminho_arquivo = os.path.join(os.path.dirname(__file__), arquivo)
     if not os.path.isfile(caminho_arquivo):
         return []
     with open(caminho_arquivo, 'r') as f:
-        urls = f.read().splitlines()
-    return urls
-
-# Função para criar um backup do arquivo de links
+        return f.read().splitlines()
 
 
-def fazer_backup():
-    caminho_arquivo = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
-    backup_dir = 'C:\\Atualizador de Preços (Quero-Quero)\\backup\\'
-    if not os.path.exists(backup_dir):
-        try:
-            os.makedirs(backup_dir)
-            print(f"Pasta de backup criada em: {backup_dir}")
-        except Exception as e:
-            print(f"Erro ao criar a pasta de backup: {e}")
-            return
+def fazer_backup(caminho_arquivo):
+    if not os.path.exists(DIRETORIO_BACKUP):
+        os.makedirs(DIRETORIO_BACKUP, exist_ok=True)
+        print(f"Pasta de backup criada em: {DIRETORIO_BACKUP}")
 
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     backup_arquivo = os.path.join(
-        backup_dir, f'produtos_backup_{timestamp}.txt')
+        DIRETORIO_BACKUP, f'produtos_backup_{timestamp}.txt')
     try:
         shutil.copy(caminho_arquivo, backup_arquivo)
         print(f"Backup criado em: {backup_arquivo}")
     except Exception as e:
         print(f"Erro ao criar o backup: {e}")
 
-# Função para adicionar link ao arquivo
-
 
 def adicionar_link():
-    novo_link = caixa_link.get().strip()  # Remove espaços em branco extras
+    novo_link = caixa_link.get().strip()
     if novo_link:
-        arquivo_links = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
-        urls_existentes = ler_links_arquivo(arquivo_links)
-
-        if novo_link in urls_existentes:
-            messagebox.showwarning(
-                "Produto duplicado", "O produto já está na lista.")
+        if verificar_link_existente(novo_link):
+            messagebox.showwarning("Produto duplicado",
+                                   "O produto já está na lista.")
             return
 
-        fazer_backup()
-        caminho_arquivo = os.path.join(
-            os.path.dirname(__file__), arquivo_links)
-
-        # Adiciona quebra de linha se não houver
-        with open(caminho_arquivo, 'a') as f:
-            if not novo_link.endswith('\n'):
-                novo_link += '\n'
-            f.write(novo_link)
-
-        caixa_link.delete(0, tk.END)  # Limpa a caixa de texto após adicionar
-        atualizar_lista()  # Atualiza a lista com o novo link
+        fazer_backup(CAMINHO_ARQUIVO)
+        salvar_link(novo_link)
+        caixa_link.delete(0, tk.END)
+        atualizar_lista()
     else:
         messagebox.showwarning(
             "Entrada inválida", "Por favor, insira um link válido.")
 
-# Função para excluir link do arquivo produtos.txt
+
+def verificar_link_existente(link):
+    urls_existentes = ler_links_arquivo(CAMINHO_ARQUIVO)
+    return link in urls_existentes
+
+
+def salvar_link(link):
+    with open(CAMINHO_ARQUIVO, 'a') as f:
+        if not link.endswith('\n'):
+            link += '\n'
+        f.write(link)
 
 
 def excluir_do_arquivo(link):
-    fazer_backup()
-    caminho_arquivo = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
-    with open(caminho_arquivo, 'r') as f:
-        linhas = f.readlines()
+    fazer_backup(CAMINHO_ARQUIVO)
+    linhas = ler_arquivo(CAMINHO_ARQUIVO)
+    salvar_linhas(linhas, link)
 
-    with open(caminho_arquivo, 'w') as f:
+
+def ler_arquivo(caminho_arquivo):
+    with open(caminho_arquivo, 'r') as f:
+        return f.readlines()
+
+
+def salvar_linhas(linhas, link):
+    with open(CAMINHO_ARQUIVO, 'w') as f:
         for linha in linhas:
             if linha.strip() != link:
                 f.write(linha)
-
-# Função para abrir o link no navegador
 
 
 def abrir_link(event):
@@ -119,25 +117,26 @@ def abrir_link(event):
     link = tree.item(item, "values")[2]
     webbrowser.open(link)
 
-# Função para atualizar a lista de produtos usando threads
-
 
 def atualizar_lista(ordenar_por=None):
-    arquivo_links = 'C:\\Atualizador de Preços (Quero-Quero)\\produtos.txt'
-    urls_produtos = ler_links_arquivo(arquivo_links)
-
-    for item in tree.get_children():
-        tree.delete(item)
+    urls_produtos = ler_links_arquivo(CAMINHO_ARQUIVO)
+    tree.delete(*tree.get_children())
 
     if not urls_produtos:
         tree.insert('', 'end', values=(
             "Nenhum link de produto encontrado", "", ""))
         return
 
+    produtos = obter_dados_produtos(urls_produtos)
+    produtos = ordenar_produtos(produtos, ordenar_por)
+
+    for nome, preco, link in produtos:
+        tree.insert('', 'end', values=(nome, preco, link))
+
+
+def obter_dados_produtos(urls_produtos):
     produtos = []
     urls_já_exibidas = set()
-
-    # Usa threads para obter os dados dos produtos em paralelo
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futuros = [executor.submit(obter_nome_e_preco, url)
                    for url in urls_produtos]
@@ -146,56 +145,38 @@ def atualizar_lista(ordenar_por=None):
             if url not in urls_já_exibidas:
                 produtos.append((nome, preco, url))
                 urls_já_exibidas.add(url)
+    return produtos
 
+
+def ordenar_produtos(produtos, ordenar_por):
     if ordenar_por == 'nome':
-        produtos.sort(key=lambda x: x[0])
+        return sorted(produtos, key=lambda x: x[0])
     elif ordenar_por == 'preco':
-        produtos.sort(key=lambda x: float(x[1].replace(',', '.').replace('R$', '').strip()) if x[1].replace(
-            ',', '.').replace('R$', '').strip().replace('.', '', 1).isdigit() else float('inf'))
-
-    for nome, preco, link in produtos:
-        tree.insert('', 'end', values=(nome, preco, link))
-
-# Função para exportar para Excel
+        return sorted(produtos, key=lambda x: float(x[1].replace(',', '.').replace('R$', '').strip()) if x[1].replace(',', '.').replace('R$', '').strip().replace('.', '', 1).isdigit() else float('inf'))
+    return produtos
 
 
 def exportar_para_excel():
     try:
-        dados = []
-        for item in tree.get_children():
-            dados.append(tree.item(item, "values"))
-
-        # Verifica se há dados para exportar
+        dados = [tree.item(item, "values") for item in tree.get_children()]
         if not dados:
             messagebox.showwarning("Exportação falhou",
                                    "Não há dados para exportar.")
             return
 
-        # Cria um DataFrame a partir dos dados
         df = pd.DataFrame(dados, columns=["Produto", "Preço", "Link"])
-
-        # Abre uma caixa de diálogo para o usuário escolher onde salvar o arquivo
         caminho_excel = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
             filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
             title="Salvar como"
         )
-
-        # Verifica se o usuário cancelou a operação
-        if not caminho_excel:
-            return
-
-        # Salva o DataFrame como um arquivo Excel
-        df.to_excel(caminho_excel, index=False)
-
-        # Mostra uma mensagem de sucesso
-        messagebox.showinfo("Exportação concluída",
-                            f"Dados exportados para {caminho_excel}")
+        if caminho_excel:
+            df.to_excel(caminho_excel, index=False)
+            messagebox.showinfo("Exportação concluída",
+                                f"Dados exportados para {caminho_excel}")
     except Exception as e:
         messagebox.showerror("Erro na exportação",
                              f"Ocorreu um erro ao exportar: {e}")
-
-# Função para excluir item selecionado
 
 
 def excluir_item():
@@ -212,83 +193,58 @@ def excluir_item():
     atualizar_lista()
 
 
-# Criação da interface gráfica
-janela = tk.Tk()
-janela.title("Lista de Produtos e Preços - Versão 2.1")
+def configurar_interface():
+    janela = tk.Tk()
+    janela.title("Lista de Produtos e Preços - Versão 2.2")
 
-style = ttk.Style()
-style.configure("Treeview.Heading", font=("Helvetica", 14))
-style.configure("Treeview", rowheight=30, font=("Helvetica", 12))
+    style = ttk.Style()
+    style.configure("Treeview.Heading", font=("Helvetica", 14))
+    style.configure("Treeview", rowheight=30, font=("Helvetica", 12))
 
-# Função para centralizar colunas
+    global tree
+    tree = ttk.Treeview(janela, columns=COLUNAS,
+                        show='headings', style="Treeview")
+    for coluna in COLUNAS:
+        tree.heading(coluna, text=coluna)
+        tree.column(coluna, width=250 if coluna ==
+                    'Produto' else 75, anchor='center')
+
+    tree.pack(fill=tk.BOTH, expand=True)
+    tree.bind("<Double-1>", abrir_link)
+
+    frame_adicionar = tk.Frame(janela)
+    frame_adicionar.pack(pady=10)
+
+    tk.Label(frame_adicionar, text="Adicionar Produto:",
+             font=("Helvetica", 12)).pack(side=tk.LEFT)
+    global caixa_link
+    caixa_link = tk.Entry(frame_adicionar, width=50, font=("Helvetica", 12))
+    caixa_link.pack(side=tk.LEFT, padx=5)
+
+    tk.Button(frame_adicionar, text="Adicionar", command=adicionar_link,
+              font=("Helvetica", 12)).pack(side=tk.LEFT)
+
+    frame_botoes = tk.Frame(janela)
+    frame_botoes.pack(pady=5)
+
+    tk.Button(frame_botoes, text="Atualizar Preços", command=lambda: atualizar_lista(
+    ), font=("Helvetica", 12)).pack(side=tk.LEFT, padx=5)
+    tk.Button(frame_botoes, text="Exportar para Excel", command=exportar_para_excel, font=(
+        "Helvetica", 12)).pack(side=tk.LEFT, padx=5)
+    tk.Button(frame_botoes, text="Excluir Selecionado", command=excluir_item, font=(
+        "Helvetica", 12)).pack(side=tk.LEFT, padx=5)
+
+    frame_ordenacao = tk.Frame(janela)
+    frame_ordenacao.pack(pady=10)
+
+    tk.Button(frame_ordenacao, text="Ordenar por Nome", command=lambda: atualizar_lista(
+        'nome'), font=("Helvetica", 12)).pack(side=tk.LEFT, padx=5)
+    tk.Button(frame_ordenacao, text="Ordenar por Preço", command=lambda: atualizar_lista(
+        'preco'), font=("Helvetica", 12)).pack(side=tk.LEFT, padx=5)
+
+    janela.geometry("800x600")
+    janela.mainloop()
 
 
-def centralizar_colunas():
-    tree.column('Produto', anchor='center')
-    tree.column('Preço', anchor='center')
-    tree.column('Link', anchor='center')
-
-
-# Definição das colunas e criação da Treeview
-colunas = ('Produto', 'Preço', 'Link')
-tree = ttk.Treeview(janela, columns=colunas, show='headings', style="Treeview")
-
-tree.heading('Produto', text='Produto')
-tree.heading('Preço', text='Preço')
-tree.heading('Link', text='Link')
-
-tree.column('Produto', width=250, anchor='center')
-tree.column('Preço', width=75, anchor='center')
-tree.column('Link', width=350, anchor='center')
-
-tree.pack(fill=tk.BOTH, expand=True)
-
-tree.bind("<Double-1>", abrir_link)
-
-# Adicionar Link
-frame_adicionar = tk.Frame(janela)
-frame_adicionar.pack(pady=10)
-
-tk.Label(frame_adicionar, text="Adicionar Produto:",
-         font=("Helvetica", 12)).pack(side=tk.LEFT)
-
-caixa_link = tk.Entry(frame_adicionar, width=50, font=("Helvetica", 12))
-caixa_link.pack(side=tk.LEFT, padx=5)
-
-botao_adicionar = tk.Button(
-    frame_adicionar, text="Adicionar", command=adicionar_link, font=("Helvetica", 12))
-botao_adicionar.pack(side=tk.LEFT)
-
-# Botões de Atualizar, Exportar e Excluir
-frame_botoes = tk.Frame(janela)
-frame_botoes.pack(pady=5)
-
-botao_atualizar = tk.Button(frame_botoes, text="Atualizar Preços",
-                            command=lambda: atualizar_lista(), font=("Helvetica", 12))
-botao_atualizar.pack(side=tk.LEFT, padx=5)
-
-botao_exportar = tk.Button(frame_botoes, text="Exportar para Excel",
-                           command=exportar_para_excel, font=("Helvetica", 12))
-botao_exportar.pack(side=tk.LEFT, padx=5)
-
-botao_excluir = tk.Button(frame_botoes, text="Excluir Selecionado",
-                          command=excluir_item, font=("Helvetica", 12))
-botao_excluir.pack(side=tk.LEFT, padx=5)
-
-# Botões de Ordenação
-frame_ordenacao = tk.Frame(janela)
-frame_ordenacao.pack(pady=10)
-
-botao_ordenar_nome = tk.Button(frame_ordenacao, text="Ordenar por Nome",
-                               command=lambda: atualizar_lista('nome'), font=("Helvetica", 12))
-botao_ordenar_nome.pack(side=tk.LEFT, padx=5)
-
-botao_ordenar_preco = tk.Button(frame_ordenacao, text="Ordenar por Preço",
-                                command=lambda: atualizar_lista('preco'), font=("Helvetica", 12))
-botao_ordenar_preco.pack(side=tk.LEFT, padx=5)
-
-centralizar_colunas()
-
-# Ajusta a resolução para 800x600
-janela.geometry("800x600")
-janela.mainloop()
+if __name__ == "__main__":
+    configurar_interface()
