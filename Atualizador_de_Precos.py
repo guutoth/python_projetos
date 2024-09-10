@@ -214,7 +214,7 @@ def excluir_item():
 
 # Criação da interface gráfica
 janela = tk.Tk()
-janela.title("Lista de Produtos e Preços - Versão 2.0")
+janela.title("Lista de Produtos e Preços - Versão 2.1")
 
 style = ttk.Style()
 style.configure("Treeview.Heading", font=("Helvetica", 14))
