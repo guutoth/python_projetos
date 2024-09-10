@@ -3,6 +3,11 @@
 # ADIÇÃO DA BARRA DE CARREGAMENTO #
 # 10/09/2024 #
 
+### VERSÃO 2.2 ###
+# OTIMIZAÇÃO E REFATORAÇÃO #
+# ADIÇÃO DA BARRA DE CARREGAMENTO #
+# 10/09/2024 #
+
 
 import requests
 from bs4 import BeautifulSoup
@@ -278,3 +283,4 @@ def configurar_interface():
 
 if __name__ == "__main__":
     configurar_interface()
+
