@@ -16,6 +16,7 @@ import concurrent.futures
 import shutil
 from datetime import datetime
 import time
+import threading
 
 # Constantes de configuração
 NOME_PROGRAMA = "Atualizador de Preços (ML e Quero-Quero)"
@@ -156,48 +157,52 @@ def abrir_link(event):
 
 
 def atualizar_lista(ordenar_por=None):
-    global progress_bar, status_label
-    urls_produtos = ler_links_arquivo(CAMINHO_ARQUIVO)
-    tree.delete(*tree.get_children())
-    progress_bar['value'] = 0
-    progress_bar['maximum'] = len(urls_produtos)
-    status_label.config(text="Atualizando...")
+    def processar_lista():
+        global progress_bar, status_label
+        urls_produtos = ler_links_arquivo(CAMINHO_ARQUIVO)
+        tree.delete(*tree.get_children())
+        progress_bar['value'] = 0
+        progress_bar['maximum'] = len(urls_produtos)
+        status_label.config(text="Atualizando...")
 
-    if not urls_produtos:
-        tree.insert('', 'end', values=(
-            "Nenhum link de produto encontrado", "", "", ""))
+        if not urls_produtos:
+            tree.insert('', 'end', values=(
+                "Nenhum link de produto encontrado", "", "", ""))
+            progress_bar['value'] = 0
+            status_label.config(text="Atualização concluída.")
+            root.after(5000, limpar_status)
+            return
+
+        produtos = []
+
+        def processar_urls(urls):
+            nonlocal produtos
+            urls_já_exibidas = set()
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futuros = [executor.submit(obter_nome_e_preco, url)
+                           for url in urls]
+                for futuro in concurrent.futures.as_completed(futuros):
+                    nome, preco, url, site = futuro.result()
+                    if url not in urls_já_exibidas:
+                        produtos.append((nome, preco, url, site))
+                        urls_já_exibidas.add(url)
+                    progress_bar['value'] += 1
+                    root.update_idletasks()
+
+        processar_urls(urls_produtos)
+        produtos = ordenar_produtos(produtos, ordenar_por)
+
+        for nome, preco, link, site in produtos:
+            tree.insert('', 'end', values=(nome, preco, link, site))
+
+        ajustar_largura_colunas()
+
         progress_bar['value'] = 0
         status_label.config(text="Atualização concluída.")
         root.after(5000, limpar_status)
-        return
 
-    produtos = []
-
-    def processar_urls(urls):
-        nonlocal produtos
-        urls_já_exibidas = set()
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futuros = [executor.submit(obter_nome_e_preco, url)
-                       for url in urls]
-            for futuro in concurrent.futures.as_completed(futuros):
-                nome, preco, url, site = futuro.result()
-                if url not in urls_já_exibidas:
-                    produtos.append((nome, preco, url, site))
-                    urls_já_exibidas.add(url)
-                progress_bar['value'] += 1
-                root.update_idletasks()
-
-    processar_urls(urls_produtos)
-    produtos = ordenar_produtos(produtos, ordenar_por)
-
-    for nome, preco, link, site in produtos:
-        tree.insert('', 'end', values=(nome, preco, link, site))
-
-    ajustar_largura_colunas()
-
-    progress_bar['value'] = 0
-    status_label.config(text="Atualização concluída.")
-    root.after(5000, limpar_status)
+    # Executar em uma nova thread
+    threading.Thread(target=processar_lista).start()
 
 
 def limpar_status():
@@ -325,6 +330,10 @@ def criar_interface():
     atualizar_lista()
 
     root.mainloop()
+
+
+criar_interface()
+
 
 
 criar_interface()
