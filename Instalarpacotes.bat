@@ -1,4 +1,4 @@
-o@echo off
+@echo off
 setlocal
 
 :: Instala os pacotes necessarios via pip
@@ -9,7 +9,6 @@ pip install requests beautifulsoup4 pandas winshell pywin32 pyinstaller || (
     exit /b 1
 )
 
-echo Todos os pacotes foram instalados com sucesso. Pressione ENTER para continuar
+echo Todos os pacotes foram instalados com sucesso.
 
 pause
-
