@@ -4,6 +4,7 @@
 # 2 - OPÇÃO DE ADICIONAR PRODUTOS DO MERCADO LIVRE E LOJAS QUERO QUERO
 # 3 - ADICIONADA UMA COLUNA QUE MOSTRA O SITE 
 # 4 - MELHORIAS NA INTERFACE
+# 5 - MELHORIAS NO DESEMPENHO
 
 import requests
 from bs4 import BeautifulSoup
@@ -19,7 +20,7 @@ import time
 import threading
 
 # Constantes de configuração
-NOME_PROGRAMA = "Atualizador de Preços (ML e Quero-Quero)"
+NOME_PROGRAMA = "Atualizador de Preços (ML e Quero-Quero) - Versão 2.4.1"
 CAMINHO_ARQUIVO = f'C:\\Atualizador de Preços (ML e Quero-Quero)\\produtos.txt'
 DIRETORIO_BACKUP = f'C:\\Atualizador de Preços (ML e Quero-Quero)\\backup\\'
 COLUNAS = ('Produto', 'Preço', 'Link', 'Site')
