@@ -19,11 +19,10 @@ import threading
 import logging
 
 # Configuração do logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Constantes de configuração
-NOME_PROGRAMA = "Atualizador de Preços (ML e Quero-Quero) - Versão 2.4.4"
+NOME_PROGRAMA = "Atualizador de Preços (ML e Quero-Quero) - Versão 2.4."
 CAMINHO_ARQUIVO = f'C:\\Atualizador de Preços (ML e Quero-Quero)\\produtos.txt'
 DIRETORIO_BACKUP = f'C:\\Atualizador de Preços (ML e Quero-Quero)\\backup\\'
 COLUNAS = ('Produto', 'Preço', 'Link', 'Site')
@@ -42,15 +41,11 @@ def obter_nome_e_preco_queroquero(url):
         return 'Nome não encontrado', 'Preço não encontrado', url, 'queroquero.com'
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    nome_element = soup.select_one(
-        '.vtex-store-components-3-x-productBrand--quickview')
-    preco_element = soup.select_one(
-        '.vtex-product-price-1-x-currencyContainer--product-price')
+    nome_element = soup.select_one('.vtex-store-components-3-x-productBrand--quickview')
+    preco_element = soup.select_one('.vtex-product-price-1-x-currencyContainer--product-price')
 
-    nome = nome_element.get_text(
-        strip=True) if nome_element else 'Nome não encontrado'
-    preco = preco_element.get_text(strip=True).replace(
-        "R$", "").strip() if preco_element else 'Preço não encontrado'
+    nome = nome_element.get_text(strip=True) if nome_element else 'Nome não encontrado'
+    preco = preco_element.get_text(strip=True).replace("R$", "").strip() if preco_element else 'Preço não encontrado'
 
     return nome, preco, url, 'queroquero.com'
 
@@ -68,10 +63,8 @@ def obter_nome_e_preco_mercadolivre(url):
     nome_element = soup.select_one('h1.ui-pdp-title')
     preco_element = soup.select_one('.andes-money-amount__fraction')
 
-    nome = nome_element.get_text(
-        strip=True) if nome_element else 'Nome não encontrado'
-    preco = preco_element.get_text(strip=True).replace(
-        "R$", "").strip() if preco_element else 'Preço não encontrado'
+    nome = nome_element.get_text(strip=True) if nome_element else 'Nome não encontrado'
+    preco = preco_element.get_text(strip=True).replace("R$", "").strip() if preco_element else 'Preço não encontrado'
 
     return nome, preco, url, 'mercadolivre.com'
 
@@ -100,8 +93,7 @@ def fazer_backup(caminho_arquivo):
         logging.info(f"Pasta de backup criada em: {DIRETORIO_BACKUP}")
 
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    backup_arquivo = os.path.join(
-        DIRETORIO_BACKUP, f'produtos_backup_{timestamp}.txt')
+    backup_arquivo = os.path.join(DIRETORIO_BACKUP, f'produtos_backup_{timestamp}.txt')
     try:
         shutil.copy(caminho_arquivo, backup_arquivo)
         logging.info(f"Backup criado em: {backup_arquivo}")
@@ -113,8 +105,7 @@ def adicionar_link():
     novo_link = caixa_link.get().strip()
     if novo_link:
         if verificar_link_existente(novo_link):
-            messagebox.showwarning("Produto duplicado",
-                                   "O produto já está na lista.")
+            messagebox.showwarning("Produto duplicado", "O produto já está na lista.")
             return
 
         fazer_backup(CAMINHO_ARQUIVO)
@@ -122,8 +113,7 @@ def adicionar_link():
         caixa_link.delete(0, tk.END)
         atualizar_lista()
     else:
-        messagebox.showwarning(
-            "Entrada inválida", "Por favor, insira um link válido.")
+        messagebox.showwarning("Entrada inválida", "Por favor, insira um link válido.")
 
 
 def verificar_link_existente(link):
@@ -171,8 +161,7 @@ def atualizar_lista(ordenar_por=None):
         status_label.config(text="Atualizando...")
 
         if not urls_produtos:
-            tree.insert('', 'end', values=(
-                "Nenhum link de produto encontrado", "", "", ""))
+            tree.insert('', 'end', values=("Nenhum link de produto encontrado", "", "", ""))
             progress_bar['value'] = 0
             status_label.config(text="Atualização concluída.")
             root.after(5000, limpar_status)
@@ -184,15 +173,13 @@ def atualizar_lista(ordenar_por=None):
             nonlocal produtos
             urls_já_exibidas = set()
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                futuros = [executor.submit(
-                    obter_nome_e_preco, url) for url in urls]
+                futuros = [executor.submit(obter_nome_e_preco, url) for url in urls]
                 for futuro in concurrent.futures.as_completed(futuros):
                     nome, preco, url, site = futuro.result()
                     if url not in urls_já_exibidas:
                         produtos.append((nome, preco, url, site))
                         urls_já_exibidas.add(url)
-                    root.after(0, lambda: progress_bar.configure(
-                        value=progress_bar['value'] + 1))
+                    root.after(0, lambda: progress_bar.configure(value=progress_bar['value'] + 1))
 
         processar_urls(urls_produtos)
         produtos = ordenar_produtos(produtos, ordenar_por)
@@ -223,23 +210,19 @@ def ordenar_produtos(produtos, ordenar_por):
 
 def ajustar_largura_colunas():
     for coluna in COLUNAS:
-        largura_max = max([len(tree.item(item, 'values')[COLUNAS.index(coluna)])
-                          for item in tree.get_children()] + [len(coluna)])
+        largura_max = max([len(tree.item(item, 'values')[COLUNAS.index(coluna)]) for item in tree.get_children()] + [len(coluna)])
         if coluna == 'Link':
             largura_max = max(int(largura_max * 0.20), 20)
         else:
             tree.column(coluna, width=largura_max * 10)
-        # Ajusta a largura de cada coluna
-        tree.column(coluna, width=largura_max, anchor=tk.CENTER)
+        tree.column(coluna, width=largura_max, anchor=tk.CENTER)  # Ajusta a largura de cada coluna
 
 
 def exportar_para_excel():
     try:
-        caminho_excel = filedialog.asksaveasfilename(
-            defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+        caminho_excel = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
         if caminho_excel:
-            dados = [(tree.item(item, "values"))
-                     for item in tree.get_children()]
+            dados = [(tree.item(item, "values")) for item in tree.get_children()]
             df = pd.DataFrame(dados, columns=COLUNAS)
             df.to_excel(caminho_excel, index=False)
             logging.info(f"Dados exportados para {caminho_excel}")
@@ -259,33 +242,25 @@ def criar_interface():
     frame_superior = tk.Frame(root)
     frame_superior.pack(pady=10)
 
-    tk.Label(frame_superior, text="Link do produto:").grid(
-        row=0, column=0, padx=10)
+    tk.Label(frame_superior, text="Link do produto:").grid(row=0, column=0, padx=10)
     caixa_link = tk.Entry(frame_superior, width=80)
     caixa_link.grid(row=0, column=1, padx=10)
-    tk.Button(frame_superior, text="Adicionar Novo Produto",
-              command=adicionar_link).grid(row=0, column=2, padx=10)
+    tk.Button(frame_superior, text="Adicionar Novo Produto", command=adicionar_link).grid(row=0, column=2, padx=10)
 
     # Frame inferior
     frame_inferior = tk.Frame(root)
     frame_inferior.pack(pady=10)
 
-    tk.Button(frame_inferior, text="Atualizar Lista",
-              command=lambda: atualizar_lista()).grid(row=0, column=0, padx=10)
-    tk.Button(frame_inferior, text="Exportar para Excel",
-              command=exportar_para_excel).grid(row=0, column=1, padx=10)
-    tk.Button(frame_inferior, text="Excluir Selecionado", command=lambda: excluir_do_arquivo(
-        tree.item(tree.selection()[0], "values")[2])).grid(row=0, column=2, padx=10)
-    tk.Button(frame_inferior, text="Ordenar por Nome", command=lambda: atualizar_lista(
-        ordenar_por='nome')).grid(row=1, column=0, padx=10)
-    tk.Button(frame_inferior, text="Ordenar por Preço", command=lambda: atualizar_lista(
-        ordenar_por='preco')).grid(row=1, column=1, padx=10)
+    tk.Button(frame_inferior, text="Atualizar Lista", command=lambda: atualizar_lista()).grid(row=0, column=0, padx=10)
+    tk.Button(frame_inferior, text="Exportar para Excel", command=exportar_para_excel).grid(row=0, column=1, padx=10)
+    tk.Button(frame_inferior, text="Excluir Selecionado", command=lambda: excluir_do_arquivo(tree.item(tree.selection()[0], "values")[2])).grid(row=0, column=2, padx=10)
+    tk.Button(frame_inferior, text="Ordenar por Nome", command=lambda: atualizar_lista(ordenar_por='nome')).grid(row=1, column=0, padx=10)
+    tk.Button(frame_inferior, text="Ordenar por Preço", command=lambda: atualizar_lista(ordenar_por='preco')).grid(row=1, column=1, padx=10)
 
     # Status e Barra de progresso
     status_label = tk.Label(root, text="Pronto")
     status_label.pack(pady=5)
-    progress_bar = ttk.Progressbar(
-        root, orient="horizontal", length=800, mode="determinate")
+    progress_bar = ttk.Progressbar(root, orient="horizontal", length=800, mode="determinate")
     progress_bar.pack(pady=10)
 
     # TreeView
@@ -303,9 +278,4 @@ def criar_interface():
 
 if __name__ == "__main__":
     criar_interface()
-
-
-
-
-criar_interface()
 
