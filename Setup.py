@@ -126,5 +126,4 @@ if __name__ == "__main__":
     criar_atalho()             # Criar atalho na área de trabalho
     remover_arquivos_temp()    # Remover arquivos temporários
 
-    print("\nINSTALAÇÃO COMPLETA. CLIQUE A TECLA ENTER PARA FECHAR O INSTALADOR...")
-    input()  # Aguarda o usuário pressionar qualquer tecla para finalizar
+ 
