@@ -10,4 +10,5 @@ pip uninstall -y requests beautifulsoup4 pandas winshell pywin32 pyinstaller || 
 
 echo Todos os pacotes foram desinstalados com sucesso. Pressione ENTER para continuar.
 
+pause
 
