@@ -1,7 +1,10 @@
-### VERSÃO 2.3 ###
+### VERSÃO 2.3.1 ###
 # UPDATES:
 # 1 - REFORMULAÇÃO DAS BARRAS E BOTÕES
 # 2 - OPÇÃO DE ADICIONAR PRODUTOS DO MERCADO LIVRE E LOJAS QUERO QUERO
+# 3 - ADICIONADA UMA COLUNA QUE MOSTRA O SITE 
+# 4 - MELHORIAS NA INTERFACE
+
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
